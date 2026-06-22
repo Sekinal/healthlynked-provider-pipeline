@@ -23,7 +23,7 @@ W, H = 1280, 720
 OUT_DIR = Path("demo_video")
 
 # Overlay (cursor + caption) lives on <html>, OUTSIDE <body>, so it is never
-# affected by the body zoom transform — captions stay crisp, cursor stays put.
+# affected by the body zoom transform · captions stay crisp, cursor stays put.
 OVERLAY_JS = r"""
 () => {
   if (window.__demo) return;
@@ -48,13 +48,17 @@ OVERLAY_JS = r"""
 
   const cap = document.createElement('div');
   cap.id = '__caption';
-  Object.assign(cap.style, {position:'fixed', left:'50%', bottom:'40px',
-     transform:'translateX(-50%) translateY(10px)', maxWidth:'74%', padding:'15px 30px',
-     background:'rgba(13,17,23,.93)', color:'#fff',
+  Object.assign(cap.style, {position:'fixed', left:'50%', bottom:'44px',
+     transform:'translateX(-50%) translateY(10px)', maxWidth:'72%', padding:'14px 30px',
+     background:'rgba(17,22,30,.38)', color:'#ffffff',
      font:'600 23px/1.45 -apple-system,Segoe UI,Roboto,sans-serif', borderRadius:'16px',
      zIndex:2147483647, pointerEvents:'none', textAlign:'center', opacity:'0',
      transition:'opacity .4s ease, transform .4s ease',
-     boxShadow:'0 10px 34px rgba(0,0,0,.5)', borderLeft:'5px solid #2dd4bf'});
+     textShadow:'0 1px 8px rgba(0,0,0,.75)',
+     border:'1px solid rgba(255,255,255,.14)', borderLeft:'4px solid #2dd4bf',
+     boxShadow:'0 8px 30px rgba(0,0,0,.35)'});
+  cap.style.backdropFilter = 'blur(14px) saturate(140%)';
+  cap.style.webkitBackdropFilter = 'blur(14px) saturate(140%)';
   root.appendChild(cap);
 
   window.__cur = (x,y) => { cur.style.left = x+'px'; cur.style.top = y+'px'; };
@@ -83,6 +87,11 @@ OVERLAY_JS = r"""
      const b = window.__zt || zTarget();
      b.style.transition = 'transform '+ms+'ms cubic-bezier(.4,0,.2,1)';
      b.style.transform = 'scale(1)';
+  };
+  window.__top = () => {
+     try { window.scrollTo(0,0); } catch(e) {}
+     ['[data-testid="stMain"]','[data-testid="stAppViewContainer"]','section.main']
+       .forEach(s => { const e=document.querySelector(s); if(e) e.scrollTop=0; });
   };
 }
 """
@@ -146,6 +155,23 @@ class Demo:
             self.beat(650)
             self.zoomed = False
 
+    def scroll(self, dy, steps=26):
+        """Smoothly scroll the content under the cursor (reveals full sections)."""
+        self.unzoom()
+        self.overlay()
+        # keep the wheel over the main content area
+        self.page.mouse.move(self.pos[0], min(self.pos[1], H * 0.5))
+        per = dy / steps
+        for _ in range(steps):
+            self.page.mouse.wheel(0, per)
+            self.page.wait_for_timeout(16)
+        self.beat(300)
+
+    def scroll_top(self):
+        self.unzoom()
+        self.page.evaluate("()=>window.__top && window.__top()")
+        self.beat(500)
+
     def move(self, x, y, steps=42):
         self.unzoom()
         self._ease_move(x, y, steps)
@@ -194,7 +220,7 @@ def run():
         page.goto("about:blank")
         d.card("HealthLynked",
                "Provider &amp; Practice Directory Update Pipeline",
-               "A cost-efficient, self-verifying AI pipeline — runs in production today")
+               "A cost-efficient, self-verifying AI pipeline · runs in production today")
         d.beat(3400)
 
         # 2) Dashboard
@@ -205,23 +231,29 @@ def run():
             pass
         d.beat(1600)
         d.move(W / 2, 130)
-        d.caption("Live review dashboard — driven by the running pipeline"); d.beat(1500)
+        d.caption("Live review dashboard · driven by the running pipeline"); d.beat(1500)
 
-        # 3) Metrics — punch in
+        # 3) Metrics · punch in
         try:
             d.move_to(page.get_by_text("Records processed", exact=False).first, steps=34)
-            d.caption("Every record scored — only safe, high-confidence updates auto-apply")
-            d.punch_in(1.5, 760); d.beat(1500); d.unzoom()
+            d.caption("Every record scored · only safe, high-confidence updates auto-apply")
+            d.punch_in(1.5, 760); d.beat(1400); d.unzoom()
+            # reveal the funnel donut just below the metrics
+            d.caption("The funnel at a glance: auto-update, human review, or no change")
+            d.scroll(230); d.move(W / 2, 330); d.punch_in(1.25, 760); d.beat(1700); d.unzoom()
+            d.scroll_top()
         except Exception:
             pass
 
-        # 4) Review queue — expand a flagged record and zoom into the diff
+        # 4) Review queue · expand a flagged record, scroll the full diff into view
         try:
+            d.click(page.get_by_role("tab", name="Review queue").first)
             exp = page.locator("details summary, [data-testid='stExpander'] summary").first
             d.caption("Uncertain or conflicting records go to human review")
             d.click(exp)
             d.caption("Proposed change + supporting sources + confidence score")
-            d.punch_in(1.5, 780); d.beat(2200); d.unzoom()
+            d.scroll(300)  # bring the full diff table into frame
+            d.move(W / 2, 430); d.punch_in(1.45, 780); d.beat(2300); d.unzoom()
         except Exception:
             pass
 
@@ -229,25 +261,30 @@ def run():
         try:
             approve = page.get_by_role("button", name="Approve").first
             d.caption("One click applies the update and writes an audit version")
-            d.click(approve); d.beat(1500)
+            d.click(approve); d.beat(1600)
+            d.scroll_top()
         except Exception:
             pass
 
-        # 6) Cost & models
+        # 6) Cost & models · scroll from spend chart down to the bake-off
         try:
             d.click(page.get_by_role("tab", name="Cost & models").first)
-            d.caption("Live cost ledger — real spend per funnel stage")
-            d.move(W / 2, 380); d.punch_in(1.35, 760); d.beat(1700); d.unzoom()
-            d.caption("Bake-off picks the cheapest accurate model — $0.067 / 1,000 conflicts")
-            d.move(W / 2, 560); d.punch_in(1.35, 760); d.beat(2000); d.unzoom()
+            d.caption("Live cost ledger · real spend per funnel stage")
+            d.scroll(330); d.move(W / 2, 430); d.punch_in(1.3, 760); d.beat(1800); d.unzoom()
+            d.caption("Bake-off picks the cheapest accurate model · $0.067 / 1,000 conflicts")
+            d.scroll(380); d.move(W / 2, 430); d.punch_in(1.3, 760); d.beat(2100); d.unzoom()
+            d.scroll_top()
         except Exception:
             pass
 
-        # 7) Change history
+        # 7) Change history · scroll through the confidence chart
         try:
             d.click(page.get_by_role("tab", name="Change history").first)
-            d.caption("Every change traceable to its sources — full audit trail")
-            d.move(W / 2, 320); d.punch_in(1.4, 760); d.beat(1900); d.unzoom()
+            d.caption("Confidence distribution · only the right tail auto-applies")
+            d.scroll(300); d.move(W / 2, 420); d.punch_in(1.3, 760); d.beat(2000); d.unzoom()
+            d.caption("Every change traceable to its sources · full audit trail")
+            d.scroll(330); d.beat(1600)
+            d.scroll_top()
         except Exception:
             pass
 
