@@ -262,6 +262,8 @@ writing a new SCD-2 version, and the scheduler's periodic `run_once` **convergin
 to `no_change`** once updates are applied (proving the repeatable loop). `migrate`
 runs before `api`/`worker`; host ports are parameterized to avoid conflicts.
 
+_Demo video music: "Funk & Breakbeat" by alexguz (royalty-free, Pixabay)._
+
 ## Why this scores well
 
 - **Accuracy / safety:** conflict deflation + high-risk gates → unsafe updates go to
