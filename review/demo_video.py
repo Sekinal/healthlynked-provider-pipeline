@@ -10,10 +10,11 @@ punch-in zooms are perfectly synced and captured natively in the recording.
 
 from __future__ import annotations
 
+import json
 import math
-from pathlib import Path
-
 import os
+import time
+from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
@@ -21,6 +22,12 @@ DASH = os.getenv("DEMO_DASH", "http://localhost:8501")
 API = os.getenv("DEMO_API", "http://localhost:8000") + "/docs"
 W, H = 1280, 720
 OUT_DIR = Path("demo_video")
+
+# Narration durations (from assets/vo/manifest.json) pace each section.
+_MANIFEST = Path("assets/vo/manifest.json")
+DUR = {}
+if _MANIFEST.exists():
+    DUR = {m["key"]: m["dur"] for m in json.loads(_MANIFEST.read_text())}
 
 # Overlay (cursor + caption) lives on <html>, OUTSIDE <body>, so it is never
 # affected by the body zoom transform · captions stay crisp, cursor stays put.
@@ -118,6 +125,27 @@ class Demo:
         self.page = page
         self.pos = [W / 2, H / 2]
         self.zoomed = False
+        self.t0 = None          # set at recording start
+        self.timeline = {}      # key -> narration start (s from t0)
+        self._sec = None
+
+    def now(self):
+        return time.monotonic() - self.t0
+
+    def section(self, key):
+        """Begin a narrated section; record when its voice line should start."""
+        self._sec = (key, self.now())
+        self.timeline[key] = round(self.now(), 2)
+
+    def hold(self):
+        """Pad the current section so visuals last at least the narration line."""
+        if not self._sec:
+            return
+        key, start = self._sec
+        target = DUR.get(key, 2.0) + 0.45  # small tail after speech
+        remaining = target - (self.now() - start)
+        if remaining > 0.05:
+            self.beat(int(remaining * 1000))
 
     def overlay(self):
         self.page.evaluate(OVERLAY_JS)
@@ -215,102 +243,112 @@ def run():
                                   record_video_size={"width": W, "height": H})
         page = ctx.new_page()
         d = Demo(page)
+        d.t0 = time.monotonic()  # ~video frame 0
 
-        # 1) Title card
+        # 1) Title card (narration: "title")
         page.goto("about:blank")
+        d.section("title")
         d.card("HealthLynked",
                "Provider &amp; Practice Directory Update Pipeline",
                "A cost-efficient, self-verifying AI pipeline · runs in production today")
-        d.beat(3400)
+        d.hold()
 
-        # 2) Dashboard
+        # 2) Dashboard (narration: "dash")
         page.goto(DASH, wait_until="domcontentloaded")
         try:
             page.get_by_text("HealthLynked").first.wait_for(timeout=30000)
         except Exception:
             pass
-        d.beat(1600)
+        d.beat(900)
+        d.section("dash")
         d.move(W / 2, 130)
-        d.caption("Live review dashboard · driven by the running pipeline"); d.beat(1500)
+        d.caption("Live review dashboard · driven by the running pipeline")
+        d.hold()
 
-        # 3) Metrics · punch in
+        # 3) Metrics (narration: "metrics")
         try:
+            d.section("metrics")
             d.move_to(page.get_by_text("Records processed", exact=False).first, steps=34)
             d.caption("Every record scored · only safe, high-confidence updates auto-apply")
-            d.punch_in(1.5, 760); d.beat(1400); d.unzoom()
-            # reveal the funnel donut just below the metrics
+            d.punch_in(1.5, 760); d.hold(); d.unzoom()
+        except Exception:
+            pass
+
+        # 4) Funnel donut (narration: "funnel")
+        try:
+            d.section("funnel")
             d.caption("The funnel at a glance: auto-update, human review, or no change")
-            d.scroll(230); d.move(W / 2, 330); d.punch_in(1.25, 760); d.beat(1700); d.unzoom()
+            d.scroll(230); d.move(W / 2, 330); d.punch_in(1.25, 760); d.hold(); d.unzoom()
             d.scroll_top()
         except Exception:
             pass
 
-        # 4) Review queue · expand a flagged record, scroll the full diff into view
+        # 5) Review queue (narration: "review")
         try:
             d.click(page.get_by_role("tab", name="Review queue").first)
             exp = page.locator("details summary, [data-testid='stExpander'] summary").first
-            d.caption("Uncertain or conflicting records go to human review")
             d.click(exp)
+            d.section("review")
             d.caption("Proposed change + supporting sources + confidence score")
-            d.scroll(300)  # bring the full diff table into frame
-            d.move(W / 2, 430); d.punch_in(1.45, 780); d.beat(2300); d.unzoom()
+            d.scroll(300)
+            d.move(W / 2, 430); d.punch_in(1.45, 780); d.hold(); d.unzoom()
         except Exception:
             pass
 
-        # 5) Approve (the money shot)
+        # 6) Approve (narration: "approve")
         try:
             approve = page.get_by_role("button", name="Approve").first
+            d.section("approve")
             d.caption("One click applies the update and writes an audit version")
-            d.click(approve); d.beat(1600)
+            d.click(approve); d.hold()
             d.scroll_top()
         except Exception:
             pass
 
-        # 6) Cost & models · scroll from spend chart down to the bake-off
+        # 7) Cost & models (narration: "cost" — long line, two zooms)
         try:
             d.click(page.get_by_role("tab", name="Cost & models").first)
-            d.caption("Live cost ledger · real spend per funnel stage")
-            d.scroll(330); d.move(W / 2, 430); d.punch_in(1.3, 760); d.beat(1800); d.unzoom()
-            d.caption("Bake-off picks the cheapest accurate model · $0.067 / 1,000 conflicts")
-            d.scroll(380); d.move(W / 2, 430); d.punch_in(1.3, 760); d.beat(2100); d.unzoom()
+            d.section("cost")
+            d.caption("Free data first · the cheapest accurate model handles conflicts")
+            d.scroll(330); d.move(W / 2, 430); d.punch_in(1.3, 760); d.beat(900); d.unzoom()
+            d.caption("Under $2 per 1,000 records · $0.067 per 1,000 conflicts")
+            d.scroll(380); d.move(W / 2, 430); d.punch_in(1.3, 760); d.hold(); d.unzoom()
             d.scroll_top()
         except Exception:
             pass
 
-        # 7) Change history · scroll through the confidence chart
+        # 8) Change history (narration: "history")
         try:
             d.click(page.get_by_role("tab", name="Change history").first)
+            d.section("history")
             d.caption("Confidence distribution · only the right tail auto-applies")
-            d.scroll(300); d.move(W / 2, 420); d.punch_in(1.3, 760); d.beat(2000); d.unzoom()
-            d.caption("Every change traceable to its sources · full audit trail")
-            d.scroll(330); d.beat(1600)
+            d.scroll(300); d.move(W / 2, 420); d.punch_in(1.3, 760); d.hold(); d.unzoom()
             d.scroll_top()
         except Exception:
             pass
 
-        # 8) API
+        # 9) API (brief, music only)
         page.goto(API, wait_until="domcontentloaded")
-        d.beat(2200)
+        d.beat(1500)
         d.caption("Production REST API for HealthLynked systems to integrate")
-        d.move(W / 2, 250); d.beat(1200)
-        try:
-            ep = page.get_by_text("/recommendations").first
-            d.move_to(ep, steps=30); d.punch_in(1.5, 760); d.beat(1700); d.unzoom()
-        except Exception:
-            pass
+        d.move(W / 2, 250); d.beat(1600)
 
-        # 9) End card
+        # 10) End card (narration: "close")
         d.caption("")
+        d.section("close")
         d.card("Repeatable · Verifiable · Cheap",
                "100% detection · 0% false-positives · &lt; $2 / 1,000 records",
                "Free authoritative data first · LLM only on conflicts · "
                "3 rounds of adversarial review · running in production today")
-        d.beat(3800)
+        d.hold()
+        d.beat(700)
 
         path = page.video.path()
+        (OUT_DIR / "timeline.json").write_text(json.dumps(d.timeline, indent=2))
         ctx.close()
         browser.close()
         print("RAW_VIDEO:", path)
+        print("TIMELINE:", json.dumps(d.timeline))
 
 
 if __name__ == "__main__":
