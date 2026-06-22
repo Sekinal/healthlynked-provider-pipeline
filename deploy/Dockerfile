@@ -20,6 +20,7 @@ COPY db ./db
 COPY api ./api
 COPY scheduler ./scheduler
 COPY dashboard ./dashboard
+COPY eval ./eval
 COPY data ./data
 COPY alembic.ini ./
 COPY main.py ./

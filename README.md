@@ -37,6 +37,15 @@ the LLM touches only conflicts, and the cheapest model is also the most accurate
 
 ---
 
+## Screenshots
+
+| | |
+|---|---|
+| ![Overview](assets/screenshots/01_overview.png) **Overview** — funnel outcomes + live cost | ![Review queue](assets/screenshots/02_review_queue.png) **Human review** — diff, sources, confidence |
+| ![Cost & models](assets/screenshots/03_cost_and_models.png) **Cost & models** — spend per stage + model bake-off | ![Change history](assets/screenshots/04_change_history.png) **Change history** — confidence vs auto-update threshold |
+
+Full-resolution images live in [`assets/screenshots/`](assets/screenshots/) (dashboard sections + the FastAPI `/docs`).
+
 ## Results on live data (the 4 seeded NPIs)
 
 `uv run python -m pipeline.run --seed data/seed_npis.json`
