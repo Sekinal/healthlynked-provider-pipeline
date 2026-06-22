@@ -1,0 +1,104 @@
+# One-command stack: postgres + redis + minio + api + worker + dashboard.
+#   docker compose -f deploy/docker-compose.yml up -d
+name: healthlynked
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql+psycopg://hl:hl@postgres:5432/healthlynked
+  REDIS_URL: redis://redis:6379/0
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  HL_PROXIES: ${HL_PROXIES:-}
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minio}
+  MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio12345}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hl
+      POSTGRES_PASSWORD: hl
+      POSTGRES_DB: healthlynked
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hl"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports: ["5432:5432"]
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports: ["6379:6379"]
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio12345}
+    volumes:
+      - miniodata:/data
+    ports: ["9000:9000", "9001:9001"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports: ["8000:8000"]
+    command: ["uv", "run", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["uv", "run", "python", "-m", "scheduler.worker"]
+
+  dashboard:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports: ["8501:8501"]
+    command: ["uv", "run", "streamlit", "run", "dashboard/app.py",
+              "--server.address", "0.0.0.0", "--server.port", "8501"]
+
+volumes:
+  pgdata:
+  miniodata:

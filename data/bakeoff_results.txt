@@ -1,0 +1,7 @@
+model                              acc  lat(s)   cost/1k  price(in/out)
+-----------------------------------------------------------------------
+deepseek/deepseek-v4-flash         1.0     3.7    0.0675    $0.09/$0.18
+google/gemini-3.1-flash-lite       1.0    1.26     0.189     $0.25/$1.5
+minimax/minimax-m3               0.875    7.37    0.6425      $0.3/$1.2
+z-ai/glm-5.2                     0.875     2.7    0.9554    $0.98/$3.08
+stepfun/step-3.7-flash           0.125   11.44    1.8047     $0.2/$1.15

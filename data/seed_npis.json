@@ -1,0 +1,50 @@
+[
+  {
+    "provider_id": "HL_001",
+    "npi": "1578055877",
+    "provider_name": "Rodrigo Aguilar, MD",
+    "specialty": "Internal Medicine, Cardiovascular Disease",
+    "practice_name": "Naples Heart Group",
+    "address": "399 9th St N, Ste 300, Naples, FL 34102",
+    "phone": "239-555-0000",
+    "website": "",
+    "active_status": "active",
+    "last_verified_date": "2023-09-01"
+  },
+  {
+    "provider_id": "HL_002",
+    "npi": "1851557136",
+    "provider_name": "Mazen Albaghdadi, MD",
+    "specialty": "Internal Medicine, Interventional Cardiology",
+    "practice_name": "Naples Heart Group",
+    "address": "399 9th St N, Ste 300, Naples, FL 34102",
+    "phone": "(239) 624-4200",
+    "website": "",
+    "active_status": "active",
+    "last_verified_date": "2025-12-01"
+  },
+  {
+    "provider_id": "HL_003",
+    "npi": "1598742017",
+    "provider_name": "Mahmoud Adam, MD",
+    "specialty": "Cardiology",
+    "practice_name": "ABC Heart Group",
+    "address": "100 Main St, Naples, FL 34102",
+    "phone": "239-555-1234",
+    "website": "",
+    "active_status": "active",
+    "last_verified_date": "2023-09-01"
+  },
+  {
+    "provider_id": "HL_004",
+    "npi": "1962515924",
+    "provider_name": "Hooshang Bolooki, MD",
+    "specialty": "Internal Medicine, Cardiovascular Disease",
+    "practice_name": "Lee Health Heart Institute",
+    "address": "4789 Evans Ave, Fort Myers, FL 33901",
+    "phone": "(239) 343-9700",
+    "website": "",
+    "active_status": "active",
+    "last_verified_date": "2024-02-15"
+  }
+]
