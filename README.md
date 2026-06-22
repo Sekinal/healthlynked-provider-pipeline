@@ -50,6 +50,24 @@ the LLM touches only conflicts, and the cheapest model is also the most accurate
 
 All decision branches are exercised on **real, current** registry data.
 
+### Measured accuracy (live, `uv run python -m eval.accuracy_eval --n 40`)
+
+Honest evaluation against NPPES as source of truth (no human-labeled ground truth
+exists), over 40 live NPIs:
+
+| Metric | Result |
+|---|---|
+| False-positive rate (invents a change on an already-correct record) | **0% (0/40)** |
+| Detection rate (catches an injected wrong phone) | **100% (40/40)** |
+| Value-correctness (proposes the right registry value) | **100% (40/40)** |
+
+**What this does and does not prove.** It validates the deterministic + free-source
+core: it doesn't fabricate changes (→ no wasted review/cost) and it correctly
+detects + repairs corrupted fields. It does **not** measure whether NPPES itself is
+right, the precision of auto-vs-review *routing* against real ground truth, or the
+web/LLM conflict-resolution accuracy beyond the 8-case gold set. Those need a
+human-labeled set — a first production step (see roadmap).
+
 ---
 
 ## Confidence scoring (`pipeline/confidence.py`)
