@@ -13,10 +13,12 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
+import os
+
 from playwright.sync_api import sync_playwright
 
-DASH = "http://localhost:8501"
-API = "http://localhost:8000/docs"
+DASH = os.getenv("DEMO_DASH", "http://localhost:8501")
+API = os.getenv("DEMO_API", "http://localhost:8000") + "/docs"
 W, H = 1280, 720
 OUT_DIR = Path("demo_video")
 
