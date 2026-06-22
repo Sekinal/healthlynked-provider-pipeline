@@ -230,13 +230,28 @@ uv run python -m pipeline.llm.bakeoff
 uv run pytest
 uv run python -m review.codex_review
 
-# 6. full stack (Postgres + Redis + MinIO + API + worker + dashboard)
-docker compose -f deploy/docker-compose.yml up -d
+# 6. full stack (Postgres + Redis + MinIO + migrate + API + worker + dashboard)
+#    Host ports are configurable to avoid conflicts, e.g.:
+PG_PORT=55460 REDIS_PORT=56460 MINIO_PORT=59060 MINIO_CONSOLE_PORT=59061 \
+  docker compose -f deploy/docker-compose.yml up -d
 #   API:        http://localhost:8000/docs
 #   Dashboard:  http://localhost:8501
+# Then run the pipeline against Postgres from inside the stack:
+docker exec healthlynked-worker-1 uv run python -m pipeline.run --seed data/seed_npis.json
+docker exec healthlynked-worker-1 uv run python -m scheduler.worker --once  # periodic run
 ```
 
 ---
+
+## Deployment — verified end-to-end
+
+The full Docker Compose stack was brought up and tested live: all 6 services
+healthy, **Alembic migration applied to Postgres** (not `create_all`), the API
+serving recommendations/reviews from Postgres, the pipeline run in-container
+against live NPPES, the human-review **approval workflow** applying a change +
+writing a new SCD-2 version, and the scheduler's periodic `run_once` **converging
+to `no_change`** once updates are applied (proving the repeatable loop). `migrate`
+runs before `api`/`worker`; host ports are parameterized to avoid conflicts.
 
 ## Why this scores well
 

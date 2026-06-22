@@ -1,0 +1,14 @@
+.venv/
+.git/
+.env
+*.db
+.cache/
+.crawlee/
+storage/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+data/snapshots/
+deploy/
+.python-version

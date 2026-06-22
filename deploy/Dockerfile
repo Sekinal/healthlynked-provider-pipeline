@@ -21,6 +21,8 @@ COPY api ./api
 COPY scheduler ./scheduler
 COPY dashboard ./dashboard
 COPY data ./data
+COPY alembic.ini ./
+COPY main.py ./
 
 # Playwright chromium for the CloakBrowser tier (optional at runtime).
 RUN uv run playwright install --with-deps chromium || true

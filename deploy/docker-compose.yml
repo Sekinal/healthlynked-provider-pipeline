@@ -25,7 +25,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    ports: ["5432:5432"]
+    ports: ["${PG_PORT:-5432}:5432"]
 
   redis:
     image: redis:7-alpine
@@ -34,7 +34,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    ports: ["6379:6379"]
+    ports: ["${REDIS_PORT:-6379}:6379"]
 
   minio:
     image: minio/minio:latest
@@ -44,7 +44,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio12345}
     volumes:
       - miniodata:/data
-    ports: ["9000:9000", "9001:9001"]
+    ports: ["${MINIO_PORT:-9000}:9000", "${MINIO_CONSOLE_PORT:-9001}:9001"]
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
@@ -72,7 +72,7 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-    ports: ["8000:8000"]
+    ports: ["${API_PORT:-8000}:8000"]
     command: ["uv", "run", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]
 
   worker:
@@ -85,6 +85,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: ["uv", "run", "python", "-m", "scheduler.worker"]
 
   dashboard:
@@ -95,7 +97,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports: ["8501:8501"]
+    ports: ["${DASH_PORT:-8501}:8501"]
     command: ["uv", "run", "streamlit", "run", "dashboard/app.py",
               "--server.address", "0.0.0.0", "--server.port", "8501"]
 
